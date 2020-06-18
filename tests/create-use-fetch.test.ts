@@ -16,6 +16,7 @@ interface FetchResponseMetadata {
 }
 
 interface Options {
+  evict?: true;
   lifespan?: number;
   metadata?: boolean;
 }
@@ -133,6 +134,23 @@ describe('createUseFetch', (): void => {
           } catch (q) {
             throw new Error('useFetch threw twice.');
           }
+        }
+        throw new Error('useFetch did not throw.');
+      });
+
+      it('should throw twice with evict=true', async (): Promise<void> => {
+        try {
+          useFetch(TEST_PATH);
+        } catch (p) {
+          await p;
+          try {
+            useFetch(TEST_PATH, undefined, {
+              evict: true,
+            });
+          } catch (q) {
+            return;
+          }
+          throw new Error('useFetch did not throw twice on evict.');
         }
         throw new Error('useFetch did not throw.');
       });

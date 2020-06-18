@@ -40,6 +40,7 @@ interface FetchResponseMetadata {
 }
 
 interface Options {
+  evict?: true;
   lifespan?: number;
   metadata?: boolean;
 }
@@ -114,18 +115,20 @@ const createUseFetch: CreateUseFetch = (
     // Check each cache by this useFetch hook.
     for (const cache of caches) {
 
-      // If this cache matches the request,
-      if (
-        deepEqual(input, cache.input) &&
-        deepEqual(init, cache.init)
-      ) {
+      // If this cache matches the request
+      const cacheHit: boolean = deepEqual(input, cache.input) && deepEqual(init, cache.init)
 
+      if (cacheHit && options.evict) {
+        // cache hit, but evict is enabled and so we'll ignore the existing promise and evict this cache
+        evict(caches, cache);
+        break;
+      } else if (cacheHit) {
         // If an error occurred, throw it so that componentDidCatch can handle
         //   it.
         if (Object.prototype.hasOwnProperty.call(cache, 'error')) {
           throw cache.error;
         }
-  
+
         // If a response was successful, return it.
         if (Object.prototype.hasOwnProperty.call(cache, 'response')) {
           if (metadata) {
@@ -191,10 +194,7 @@ const createUseFetch: CreateUseFetch = (
           if (lifespan > 0) {
             setTimeout(
               (): void => {
-                const index: number = caches.indexOf(cache);
-                if (index !== -1) {
-                  caches.splice(index, 1);
-                }
+                evict(caches, cache);
               },
               lifespan,
             );
@@ -208,6 +208,13 @@ const createUseFetch: CreateUseFetch = (
   }
 
   return useFetch;
+
+  function evict(_caches: FetchCache[], _cache: FetchCache) {
+    const index: number = _caches.indexOf(_cache);
+    if (index !== -1) {
+      _caches.splice(index, 1);
+    }
+  }
 };
 
 const _export: Export = Object.assign(
